@@ -1,21 +1,48 @@
-import { StatusBar } from 'expo-status-bar';
-import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useContext, useState, useLayoutEffect } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { StripeProvider } from '@stripe/stripe-react-native';
+//
+import AuthNavigator from './src/navigators/AuthNavigator';
+import MainNavigator from './src/navigators/MainNavigator';
+import AuthProvider, {
+  Context as AuthContext,
+} from './src/context/AuthContext';
+import ArticleProvider from './src/context/ArticleContext';
+import PaymentProvider from './src/context/PaymentContext';
+import forumApi from './src/api/forumApi';
 
-export default function App() {
+const App = () => {
+  const [publishableKey, setPublishableKey] = useState('');
+  const {
+    state: { token },
+  } = useContext(AuthContext);
+
+  const fetchPublishableKey = async () => {
+    const { data } = await forumApi.get('/api/v1/payments/config');
+
+    setPublishableKey(data.publishableKey);
+  };
+
+  useLayoutEffect(() => {
+    fetchPublishableKey();
+  }, []);
+
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <StripeProvider publishableKey={publishableKey}>
+      <NavigationContainer>
+        {token && <MainNavigator />}
+        {!token && <AuthNavigator />}
+      </NavigationContainer>
+    </StripeProvider>
   );
-}
+};
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default () => (
+  <PaymentProvider>
+    <AuthProvider>
+      <ArticleProvider>
+        <App />
+      </ArticleProvider>
+    </AuthProvider>
+  </PaymentProvider>
+);
